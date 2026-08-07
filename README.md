@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Bayesian Concept Consolidation (BCC)
 
 **Central hypothesis:** catastrophic forgetting is better explained by *drift
@@ -67,3 +68,6 @@ python scripts/train.py --epochs 3 --device cpu
 Scaffolded and syntax-checked; not yet run end-to-end (no GPU/torch in the
 environment this was written in) — validate a first pass locally before
 trusting the numbers, and check for shape/device bugs on the first run.
+=======
+# BayesianConceptCL
+>>>>>>> c17022cf9180d63c2e5860c3fa26a3d9a87841e2
