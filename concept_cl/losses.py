@@ -74,7 +74,21 @@ def total_loss(model, x, y, prototype_store,
     l_task = task_loss(logits, y)
     l_kl = model.kl_divergence() * lambda1_kl
 
-    l_concept_raw = concept_stability_loss(concepts, y, prototype_store)
+    # Concept-stability loss on the CURRENT batch will almost always be 0 in
+    # class-incremental settings like Split-MNIST, since a task's own batch
+    # only contains classes with no prototype yet. The real protective
+    # signal has to come from the REPLAY batch, since that's the only place
+    # old-task data (with existing prototypes) flows through the model
+    # during later tasks -- so we compute it on both and sum them.
+    l_concept_current = concept_stability_loss(concepts, y, prototype_store)
+
+    l_concept_replay = torch.tensor(0.0, device=x.device)
+    if replay_batch is not None:
+        rx, ry = replay_batch
+        _, replay_concepts = model(rx, sample=True)
+        l_concept_replay = concept_stability_loss(replay_concepts, ry, prototype_store)
+
+    l_concept_raw = l_concept_current + l_concept_replay
     if use_adaptive:
         post_var = model.concept_posterior_variance()
         adaptive_w = adaptive_concept_weight(post_var).mean()

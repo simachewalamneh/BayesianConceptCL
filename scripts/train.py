@@ -86,15 +86,35 @@ def main():
             print(f"  epoch {epoch}: {components}")
 
         # Register/update concept prototypes for this task's classes
+   # Register concept prototypes for THIS task's (brand-new) classes.
+        # Aggregate over the whole task's data in one pass so each class
+        # gets exactly ONE history entry here (previously this ran per
+        # mini-batch, which polluted history with same-task batch noise
+        # instead of genuine cross-task comparisons).
         model.eval()
         with torch.no_grad():
+            class_concepts = {c: [] for c in classes}
             for x, y in train_loader:
                 x, y = x.to(device), y.to(device)
                 _, concepts = model(x, sample=False)
                 for c in classes:
                     mask = (y == c)
                     if mask.sum() > 0:
-                        proto_store.register_or_update(c, concepts[mask], task_idx)
+                        class_concepts[c].append(concepts[mask])
+            for c, chunks in class_concepts.items():
+                proto_store.register_or_update(c, torch.cat(chunks, dim=0), task_idx)
+
+            # Cross-task KSI check: re-embed every PREVIOUSLY seen class's
+            # stored replay samples through the model as it stands now, and
+            # log that as a new history entry. This is what actually tests
+            # "did old concepts drift while training on new tasks" -- the
+            # per-batch version inside a single task's loop does not.
+            for old_class, stored_x in replay_buf.buffer_x.items():
+                if old_class in classes:
+                    continue  # already handled above for this task
+                stored_x = stored_x.to(device)
+                _, old_concepts = model(stored_x, sample=False)
+                proto_store.register_or_update(old_class, old_concepts, task_idx)
         model.train()
 
         # Update replay buffer with this task's most-uncertain examples
