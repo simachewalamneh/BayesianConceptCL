@@ -50,7 +50,16 @@ class ConceptCLModel(nn.Module):
                  concept_dim: int = 32, num_classes: int = 10, prior_sigma: float = 1.0,
                  input_size: int = 28):
         super().__init__()
-        self.encoder = FeatureExtractor(in_channels, feat_dim, input_size=input_size)        self.task_head = nn.Linear(concept_dim, num_classes)
+        self.encoder = FeatureExtractor(in_channels, feat_dim, input_size=input_size)
+
+        # Bayesian latent layer: produces distribution over latent z
+        self.bayes_latent = BayesianLinear(feat_dim, feat_dim, prior_sigma=prior_sigma)
+
+        # Concept layer: latent -> concept space (this is what gets protected,
+        # not the raw weights)
+        self.concept_layer = BayesianLinear(feat_dim, concept_dim, prior_sigma=prior_sigma)
+
+        self.task_head = nn.Linear(concept_dim, num_classes)
 
         self.concept_dim = concept_dim
 
