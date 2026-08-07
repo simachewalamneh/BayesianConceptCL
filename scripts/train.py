@@ -52,9 +52,17 @@ def main():
     parser.add_argument("--epochs", type=int, default=3)
     parser.add_argument("--batch_size", type=int, default=128)
     parser.add_argument("--device", type=str, default="cpu")
-    parser.add_argument("--use_adaptive", action="store_true", default=True)
-    parser.add_argument("--use_replay", action="store_true", default=True)
+    parser.add_argument("--no_adaptive", action="store_true",
+                         help="disable adaptive concept weighting (ablation)")
+    parser.add_argument("--no_replay", action="store_true",
+                         help="disable replay (ablation)")
     args = parser.parse_args()
+
+    # NOTE: store_true flags with default=True can never be turned off from
+    # the command line -- there's no way to pass "False" to them. These are
+    # negated flags instead: pass --no_adaptive / --no_replay to disable.
+    use_adaptive = not args.no_adaptive
+    use_replay = not args.no_replay
 
     device = torch.device(args.device)
     train_loaders, test_loaders = get_split_mnist_tasks(batch_size=args.batch_size)
@@ -74,19 +82,18 @@ def main():
         for epoch in range(args.epochs):
             for x, y in train_loader:
                 x, y = x.to(device), y.to(device)
-                replay_batch = replay_buf.sample(args.batch_size // 2, device) if args.use_replay else None
+                replay_batch = replay_buf.sample(args.batch_size // 2, device) if use_replay else None
 
                 optimizer.zero_grad()
                 loss, components, _ = total_loss(
                     model, x, y, proto_store,
-                    replay_batch=replay_batch, use_adaptive=args.use_adaptive,
+                    replay_batch=replay_batch, use_adaptive=use_adaptive,
                 )
                 loss.backward()
                 optimizer.step()
             print(f"  epoch {epoch}: {components}")
 
-        # Register/update concept prototypes for this task's classes
-   # Register concept prototypes for THIS task's (brand-new) classes.
+        # Register concept prototypes for THIS task's (brand-new) classes.
         # Aggregate over the whole task's data in one pass so each class
         # gets exactly ONE history entry here (previously this ran per
         # mini-batch, which polluted history with same-task batch noise
@@ -118,7 +125,7 @@ def main():
         model.train()
 
         # Update replay buffer with this task's most-uncertain examples
-        if args.use_replay:
+        if use_replay:
             for x, y in train_loader:
                 x, y = x.to(device), y.to(device)
                 replay_buf.add_task_data(model, x, y)

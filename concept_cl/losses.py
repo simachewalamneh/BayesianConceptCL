@@ -38,15 +38,19 @@ def concept_stability_loss(current_concepts: torch.Tensor, targets: torch.Tensor
     return torch.stack([l.squeeze() for l in losses]).mean()
 
 
-def adaptive_concept_weight(posterior_variance: torch.Tensor, eps: float = 1e-3) -> torch.Tensor:
+def adaptive_concept_weight(posterior_variance: torch.Tensor, eps: float = 1e-3,
+                             max_weight: float = 10.0) -> torch.Tensor:
     """
-    lambda_i = 1 / (sigma_i^2 + eps)
+    lambda_i = 1 / (sigma_i^2 + eps), clamped to [0, max_weight].
     High certainty (low variance) -> large penalty -> protect concept.
     High uncertainty (high variance) -> small penalty -> allow adaptation.
-    Returns a per-concept-dim weight vector; use its mean as a scalar
-    multiplier on L_concept, or apply per-dimension if you want finer control.
+    Without clamping, this exploded to ~1000x early in training (posterior
+    variance starts near-zero from the rho init), swamping the task loss
+    entirely and causing task accuracy to collapse across tasks instead of
+    the model actually learning new classes.
     """
-    return 1.0 / (posterior_variance + eps)
+    raw = 1.0 / (posterior_variance + eps)
+    return torch.clamp(raw, max=max_weight)
 
 
 def uncertainty_weighted_replay_loss(model, replay_x: torch.Tensor, replay_y: torch.Tensor,
@@ -83,9 +87,10 @@ def total_loss(model, x, y, prototype_store,
     l_concept_current = concept_stability_loss(concepts, y, prototype_store)
 
     l_concept_replay = torch.tensor(0.0, device=x.device)
+    replay_concepts = None
     if replay_batch is not None:
         rx, ry = replay_batch
-        _, replay_concepts = model(rx, sample=True)
+        replay_logits, replay_concepts = model(rx, sample=True)
         l_concept_replay = concept_stability_loss(replay_concepts, ry, prototype_store)
 
     l_concept_raw = l_concept_current + l_concept_replay
