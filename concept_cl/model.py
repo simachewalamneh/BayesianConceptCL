@@ -18,39 +18,39 @@ from .bayesian_layers import BayesianLinear
 
 
 class FeatureExtractor(nn.Module):
-    """Small CNN, swap for something bigger if you move past MNIST/CIFAR."""
+    """Small CNN, swap for something bigger if you move past MNIST/CIFAR.
 
-    def __init__(self, in_channels: int = 1, feat_dim: int = 128):
+    NOTE: the flattened conv output size is fixed by input_size (computed at
+    construction time, not lazily on first forward) so that ALL parameters
+    exist before the optimizer and any "initial weights" snapshot are taken.
+    A lazily-created layer here previously caused two bugs: (1) it was
+    missing from the parameter-drift snapshot taken before training, and
+    (2) more seriously, it was missing from the optimizer's parameter list
+    entirely, so it was never actually being trained.
+    """
+
+    def __init__(self, in_channels: int = 1, feat_dim: int = 128, input_size: int = 28):
         super().__init__()
         self.net = nn.Sequential(
             nn.Conv2d(in_channels, 32, 3, padding=1), nn.ReLU(), nn.MaxPool2d(2),
             nn.Conv2d(32, 64, 3, padding=1), nn.ReLU(), nn.MaxPool2d(2),
             nn.Flatten(),
         )
-        self._feat_dim = feat_dim
-        self.proj = None  # lazy init once we know the flattened size
+        # two stride-2 maxpools -> input_size // 4 spatial dims, 64 channels
+        conv_out_dim = 64 * (input_size // 4) * (input_size // 4)
+        self.proj = nn.Linear(conv_out_dim, feat_dim)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         h = self.net(x)
-        if self.proj is None:
-            self.proj = nn.Linear(h.shape[1], self._feat_dim).to(h.device)
         return F.relu(self.proj(h))
 
 
 class ConceptCLModel(nn.Module):
     def __init__(self, in_channels: int = 1, feat_dim: int = 128,
-                 concept_dim: int = 32, num_classes: int = 10, prior_sigma: float = 1.0):
+                 concept_dim: int = 32, num_classes: int = 10, prior_sigma: float = 1.0,
+                 input_size: int = 28):
         super().__init__()
-        self.encoder = FeatureExtractor(in_channels, feat_dim)
-
-        # Bayesian latent layer: produces distribution over latent z
-        self.bayes_latent = BayesianLinear(feat_dim, feat_dim, prior_sigma=prior_sigma)
-
-        # Concept layer: latent -> concept space (this is what gets protected,
-        # not the raw weights)
-        self.concept_layer = BayesianLinear(feat_dim, concept_dim, prior_sigma=prior_sigma)
-
-        self.task_head = nn.Linear(concept_dim, num_classes)
+        self.encoder = FeatureExtractor(in_channels, feat_dim, input_size=input_size)        self.task_head = nn.Linear(concept_dim, num_classes)
 
         self.concept_dim = concept_dim
 
