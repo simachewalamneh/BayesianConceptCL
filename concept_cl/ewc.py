@@ -71,17 +71,27 @@ class EWCHelper:
 
     def penalty(self) -> torch.Tensor:
         """
-        Mean squared penalty across ALL parameter elements combined
-        (not summed) -- summing over thousands of individual weights times
-        a large lambda caused gradient explosion and near-chance accuracy
-        in the first run. Averaging keeps the scale sane regardless of
-        how many parameters the model has.
+        Sum over all parameters (the standard EWC formulation), relying on
+        gradient clipping (applied in the training loop) for numerical
+        stability instead of pre-shrinking the loss via averaging.
+
+        NOTE on why this changed twice: the original sum-based version
+        exploded (lambda=100 was far too large relative to an unclipped
+        sum over hundreds of thousands of parameters). The mean-based fix
+        that followed overcorrected in the OPPOSITE direction: dividing by
+        total parameter count -- dominated by large, near-zero-Fisher
+        layers like the encoder's projection layer (~400K params) -- diluted
+        the signal from the small number of genuinely important
+        (high-Fisher) parameters down to ~0, giving effectively zero
+        protection and full catastrophic forgetting. Diagnostic run
+        confirmed: ewc_penalty printed as 0.0000 every batch, and Task 0
+        accuracy collapsed to 0.0 after Task 1 -- textbook unregularized
+        forgetting. Reverting to sum + relying on the already-added
+        grad-norm clipping (max_norm=5.0) fixes both failure modes at once.
         """
         if not self._has_task:
             return torch.tensor(0.0)
-        total_sq = 0.0
-        total_count = 0
+        loss = 0.0
         for n, p in self.model.named_parameters():
-            total_sq = total_sq + (self.fisher[n] * (p - self.star_params[n]) ** 2).sum()
-            total_count += p.numel()
-        return self.lambda_ewc * total_sq / max(total_count, 1)
+            loss = loss + (self.fisher[n] * (p - self.star_params[n]) ** 2).sum()
+        return self.lambda_ewc * loss
