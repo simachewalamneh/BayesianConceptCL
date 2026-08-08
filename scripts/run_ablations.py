@@ -18,9 +18,10 @@ from concept_cl.data import get_split_mnist_tasks
 from scripts.train import run_experiment
 
 CONDITIONS = {
-    "full_method":        dict(use_adaptive=True,  use_replay=True, use_concept=True),
-    "no_concept_loss":    dict(use_adaptive=True,  use_replay=True, use_concept=False),
-    "fixed_weight":       dict(use_adaptive=False, use_replay=True, use_concept=True),
+    "full_method":        dict(method="concept", use_adaptive=True,  use_replay=True, use_concept=True),
+    "no_concept_loss":    dict(method="concept", use_adaptive=True,  use_replay=True, use_concept=False),
+    "fixed_weight":       dict(method="concept", use_adaptive=False, use_replay=True, use_concept=True),
+    "ewc_baseline":       dict(method="ewc",     use_adaptive=True,  use_replay=False, use_concept=False, ewc_lambda=100.0),
 }
 
 

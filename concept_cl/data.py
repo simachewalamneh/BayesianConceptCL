@@ -1,7 +1,3 @@
-"""Split-MNIST benchmark: 5 tasks, 2 classes each -- deliberately class-
-incremental (not permuted) so "concept" (e.g. what a 3 looks like) is a
-semantically meaningful, testable quantity."""
-
 import torch
 from torch.utils.data import Dataset, DataLoader, Subset
 from torchvision import datasets, transforms
