@@ -21,7 +21,8 @@ CONDITIONS = {
     "full_method":        dict(method="concept", use_adaptive=True,  use_replay=True, use_concept=True),
     "no_concept_loss":    dict(method="concept", use_adaptive=True,  use_replay=True, use_concept=False),
     "fixed_weight":       dict(method="concept", use_adaptive=False, use_replay=True, use_concept=True),
-    "ewc_baseline":       dict(method="ewc",     use_adaptive=True,  use_replay=False, use_concept=False, ewc_lambda=10000.0),
+    "ewc_baseline":       dict(method="ewc",     use_adaptive=True,  use_replay=False, use_concept=False, ewc_lambda=1000.0),
+    "ewc_plus_replay":    dict(method="ewc",     use_adaptive=True,  use_replay=True,  use_concept=False, ewc_lambda=1000.0),
 }
 
 

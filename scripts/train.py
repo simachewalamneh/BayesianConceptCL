@@ -104,10 +104,23 @@ def run_experiment(epochs=1, batch_size=128, device="cpu",
                     logits, _ = model(x, sample=False)
                     task_ce = torch.nn.functional.cross_entropy(logits, y)
                     ewc_pen = ewc_helper.penalty()
-                    loss = task_ce + ewc_pen
+
+                    # EWC+replay variant: also train on rehearsed old-task
+                    # samples, same as the concept-stability method gets.
+                    # This isolates whether the concept method's advantage
+                    # comes from concept-stability specifically, or just
+                    # from having replay at all (which pure EWC lacked).
+                    replay_ce = torch.tensor(0.0, device=device)
+                    if replay_batch is not None:
+                        rx, ry = replay_batch
+                        replay_logits, _ = model(rx, sample=False)
+                        replay_ce = torch.nn.functional.cross_entropy(replay_logits, ry)
+
+                    loss = task_ce + ewc_pen + replay_ce
                     components = {"task": task_ce.item(),
                                   "ewc_penalty": ewc_pen.item() if torch.is_tensor(ewc_pen) else ewc_pen,
-                                  "kl": 0.0, "concept": 0.0, "replay": 0.0}
+                                  "kl": 0.0, "concept": 0.0,
+                                  "replay": replay_ce.item() if torch.is_tensor(replay_ce) else replay_ce}
                 else:
                     loss, components, _ = total_loss(
                         model, x, y, proto_store,
