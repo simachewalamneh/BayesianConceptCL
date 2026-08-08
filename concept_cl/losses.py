@@ -72,34 +72,38 @@ def uncertainty_weighted_replay_loss(model, replay_x: torch.Tensor, replay_y: to
 def total_loss(model, x, y, prototype_store,
                 lambda1_kl: float = 1e-4, lambda2_concept: float = 1.0,
                 lambda3_replay: float = 1.0,
-                replay_batch=None, use_adaptive: bool = True):
+                replay_batch=None, use_adaptive: bool = True, use_concept: bool = True):
     logits, concepts = model(x, sample=True)
 
     l_task = task_loss(logits, y)
     l_kl = model.kl_divergence() * lambda1_kl
 
-    # Concept-stability loss on the CURRENT batch will almost always be 0 in
-    # class-incremental settings like Split-MNIST, since a task's own batch
-    # only contains classes with no prototype yet. The real protective
-    # signal has to come from the REPLAY batch, since that's the only place
-    # old-task data (with existing prototypes) flows through the model
-    # during later tasks -- so we compute it on both and sum them.
-    l_concept_current = concept_stability_loss(concepts, y, prototype_store)
+    if use_concept:
+        # Concept-stability loss on the CURRENT batch will almost always be 0 in
+        # class-incremental settings like Split-MNIST, since a task's own batch
+        # only contains classes with no prototype yet. The real protective
+        # signal has to come from the REPLAY batch, since that's the only place
+        # old-task data (with existing prototypes) flows through the model
+        # during later tasks -- so we compute it on both and sum them.
+        l_concept_current = concept_stability_loss(concepts, y, prototype_store)
 
-    l_concept_replay = torch.tensor(0.0, device=x.device)
-    replay_concepts = None
-    if replay_batch is not None:
-        rx, ry = replay_batch
-        replay_logits, replay_concepts = model(rx, sample=True)
-        l_concept_replay = concept_stability_loss(replay_concepts, ry, prototype_store)
+        l_concept_replay = torch.tensor(0.0, device=x.device)
+        if replay_batch is not None:
+            rx, ry = replay_batch
+            _, replay_concepts = model(rx, sample=True)
+            l_concept_replay = concept_stability_loss(replay_concepts, ry, prototype_store)
 
-    l_concept_raw = l_concept_current + l_concept_replay
-    if use_adaptive:
-        post_var = model.concept_posterior_variance()
-        adaptive_w = adaptive_concept_weight(post_var).mean()
-        l_concept = adaptive_w * l_concept_raw
+        l_concept_raw = l_concept_current + l_concept_replay
+        if use_adaptive:
+            post_var = model.concept_posterior_variance()
+            adaptive_w = adaptive_concept_weight(post_var).mean()
+            l_concept = adaptive_w * l_concept_raw
+        else:
+            l_concept = lambda2_concept * l_concept_raw
     else:
-        l_concept = lambda2_concept * l_concept_raw
+        # Ablation / baseline: no concept protection at all -- this is the
+        # condition to compare the full method against.
+        l_concept = torch.tensor(0.0, device=x.device)
 
     l_replay = torch.tensor(0.0, device=x.device)
     if replay_batch is not None:
@@ -109,6 +113,7 @@ def total_loss(model, x, y, prototype_store,
     loss = l_task + l_kl + l_concept + l_replay
     components = {
         "task": l_task.item(), "kl": l_kl.item(),
-        "concept": l_concept.item(), "replay": l_replay.item() if torch.is_tensor(l_replay) else l_replay,
+        "concept": l_concept.item() if torch.is_tensor(l_concept) else l_concept,
+        "replay": l_replay.item() if torch.is_tensor(l_replay) else l_replay,
     }
     return loss, components, concepts
