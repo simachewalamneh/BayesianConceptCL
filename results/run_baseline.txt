@@ -1,0 +1,24 @@
+
+=== Task 0: classes (0, 1) ===
+  epoch 0: {'task': 0.0022368584759533405, 'kl': 9.118051528930664, 'concept': 0.0, 'replay': 0.0}
+  avg_acc_so_far=0.9991  param_drift=15.444  KSI=nan
+
+=== Task 1: classes (2, 3) ===
+  epoch 0: {'task': 0.18687883019447327, 'kl': 8.96330738067627, 'concept': 0.0, 'replay': 0.03944038599729538}
+  avg_acc_so_far=0.9722  param_drift=27.764  KSI=0.6334636807441711
+
+=== Task 2: classes (4, 5) ===
+  epoch 0: {'task': 0.05639049410820007, 'kl': 8.832687377929688, 'concept': 0.0, 'replay': 0.06539885699748993}
+  avg_acc_so_far=0.9624  param_drift=37.973  KSI=0.6283762529492378
+
+=== Task 3: classes (6, 7) ===
+  epoch 0: {'task': 0.015226101502776146, 'kl': 8.69725227355957, 'concept': 0.0, 'replay': 0.06017691269516945}
+  avg_acc_so_far=0.9611  param_drift=48.173  KSI=0.59644715487957
+
+=== Task 4: classes (8, 9) ===
+  epoch 0: {'task': 0.269302099943161, 'kl': 8.570459365844727, 'concept': 0.0, 'replay': 0.08214457333087921}
+  avg_acc_so_far=0.9390  param_drift=57.751  KSI=0.3925283430144191
+
+Saved results/drift_vs_ksi.png
+avg_acc_history: [0.9990543735224586, 0.972204740635774, 0.9623742462471553, 0.9610540430369654, 0.938996181855876]
+9]
