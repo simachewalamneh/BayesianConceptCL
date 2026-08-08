@@ -56,13 +56,16 @@ def main():
                          help="disable adaptive concept weighting (ablation)")
     parser.add_argument("--no_replay", action="store_true",
                          help="disable replay (ablation)")
+    parser.add_argument("--no_concept", action="store_true",
+                         help="disable concept-stability loss entirely (ablation / baseline)")
     args = parser.parse_args()
 
     # NOTE: store_true flags with default=True can never be turned off from
     # the command line -- there's no way to pass "False" to them. These are
-    # negated flags instead: pass --no_adaptive / --no_replay to disable.
+    # negated flags instead: pass --no_adaptive / --no_replay / --no_concept to disable.
     use_adaptive = not args.no_adaptive
     use_replay = not args.no_replay
+    use_concept = not args.no_concept
 
     device = torch.device(args.device)
     train_loaders, test_loaders = get_split_mnist_tasks(batch_size=args.batch_size)
@@ -87,7 +90,7 @@ def main():
                 optimizer.zero_grad()
                 loss, components, _ = total_loss(
                     model, x, y, proto_store,
-                    replay_batch=replay_batch, use_adaptive=use_adaptive,
+                    replay_batch=replay_batch, use_adaptive=use_adaptive, use_concept=use_concept,
                 )
                 loss.backward()
                 optimizer.step()
