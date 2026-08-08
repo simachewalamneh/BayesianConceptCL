@@ -70,9 +70,18 @@ class EWCHelper:
         self.model.train()
 
     def penalty(self) -> torch.Tensor:
+        """
+        Mean squared penalty across ALL parameter elements combined
+        (not summed) -- summing over thousands of individual weights times
+        a large lambda caused gradient explosion and near-chance accuracy
+        in the first run. Averaging keeps the scale sane regardless of
+        how many parameters the model has.
+        """
         if not self._has_task:
             return torch.tensor(0.0)
-        loss = 0.0
+        total_sq = 0.0
+        total_count = 0
         for n, p in self.model.named_parameters():
-            loss = loss + (self.fisher[n] * (p - self.star_params[n]) ** 2).sum()
-        return self.lambda_ewc * loss
+            total_sq = total_sq + (self.fisher[n] * (p - self.star_params[n]) ** 2).sum()
+            total_count += p.numel()
+        return self.lambda_ewc * total_sq / max(total_count, 1)

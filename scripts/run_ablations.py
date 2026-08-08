@@ -21,7 +21,7 @@ CONDITIONS = {
     "full_method":        dict(method="concept", use_adaptive=True,  use_replay=True, use_concept=True),
     "no_concept_loss":    dict(method="concept", use_adaptive=True,  use_replay=True, use_concept=False),
     "fixed_weight":       dict(method="concept", use_adaptive=False, use_replay=True, use_concept=True),
-    "ewc_baseline":       dict(method="ewc",     use_adaptive=True,  use_replay=False, use_concept=False, ewc_lambda=100.0),
+    "ewc_baseline":       dict(method="ewc",     use_adaptive=True,  use_replay=False, use_concept=False, ewc_lambda=10000.0),
 }
 
 
@@ -57,9 +57,18 @@ def main():
     print(f"{'Condition':<20}{'Acc (mean±std)':<22}{'KSI (mean±std)':<22}")
     print("=" * 70)
     for cond_name, vals in raw_results.items():
-        acc_mean, acc_std = statistics.mean(vals["acc"]), (statistics.stdev(vals["acc"]) if len(vals["acc"]) > 1 else 0.0)
-        ksi_mean, ksi_std = statistics.mean(vals["ksi"]), (statistics.stdev(vals["ksi"]) if len(vals["ksi"]) > 1 else 0.0)
-        print(f"{cond_name:<20}{acc_mean:.4f} ± {acc_std:.4f}    {ksi_mean:.4f} ± {ksi_std:.4f}")
+        # Filter out any NaN (e.g. KSI is undefined until a class has >= 2
+        # history points) so one bad value doesn't crash the whole summary.
+        clean_acc = [v for v in vals["acc"] if v == v]  # v == v is False only for NaN
+        clean_ksi = [v for v in vals["ksi"] if v == v]
+
+        acc_mean = statistics.mean(clean_acc) if clean_acc else float("nan")
+        acc_std = statistics.stdev(clean_acc) if len(clean_acc) > 1 else 0.0
+        ksi_mean = statistics.mean(clean_ksi) if clean_ksi else float("nan")
+        ksi_std = statistics.stdev(clean_ksi) if len(clean_ksi) > 1 else 0.0
+
+        n_note = "" if len(clean_ksi) == len(vals["ksi"]) else f"  (KSI valid for {len(clean_ksi)}/{len(vals['ksi'])} seeds)"
+        print(f"{cond_name:<20}{acc_mean:.4f} ± {acc_std:.4f}    {ksi_mean:.4f} ± {ksi_std:.4f}{n_note}")
         summary_rows.append({
             "condition": cond_name,
             "acc_mean": acc_mean, "acc_std": acc_std,

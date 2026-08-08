@@ -114,6 +114,10 @@ def run_experiment(epochs=1, batch_size=128, device="cpu",
                         replay_batch=replay_batch, use_adaptive=use_adaptive, use_concept=use_concept,
                     )
                 loss.backward()
+                # Safety net: EWC's penalty can still spike after a task
+                # boundary; clip to prevent gradient-explosion-driven
+                # accuracy collapse like the first EWC run showed.
+                torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=5.0)
                 optimizer.step()
             if verbose:
                 print(f"  epoch {epoch}: {components}")
@@ -142,11 +146,16 @@ def run_experiment(epochs=1, batch_size=128, device="cpu",
         if method == "ewc":
             ewc_helper.register_task(train_loader, device)
 
-        if use_replay:
-            for x, y in train_loader:
-                x, y = x.to(device), y.to(device)
-                replay_buf.add_task_data(model, x, y)
-                break
+        # ALWAYS store samples for later KSI re-evaluation, regardless of
+        # whether this method uses replay in its training loss -- KSI
+        # tracking needs old-class samples to re-embed at later task
+        # boundaries even for methods (like plain EWC) that don't replay.
+        # Using replay in the loss (use_replay) is a separate concern from
+        # storing samples for measurement purposes (always on).
+        for x, y in train_loader:
+            x, y = x.to(device), y.to(device)
+            replay_buf.add_task_data(model, x, y)
+            break
 
         accs = evaluate(model, test_loaders[:task_idx + 1], device)
         avg_acc = sum(accs) / len(accs)
