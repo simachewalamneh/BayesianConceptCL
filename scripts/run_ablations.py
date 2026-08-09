@@ -100,7 +100,7 @@ def main():
         "ewc_plus_replay": "tab:purple",
     }
     n_tasks = len(SPLIT_MNIST_TASKS)
-    task_x = list(range(n_tasks))
+    task_x = list(range(1, n_tasks + 1))  # 1-indexed to match "Task 1..5" in the paper text
 
     def plot_trajectory(metric_key, ylabel, title, ylim, save_path, legend_loc="lower left"):
         """Shared plotting logic for any per-task trajectory metric (KSI, accuracy, ...)."""
