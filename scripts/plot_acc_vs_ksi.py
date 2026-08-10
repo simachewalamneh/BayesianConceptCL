@@ -39,6 +39,18 @@ def main():
         rows = list(reader)
 
     plt.figure(figsize=(7, 6))
+    # Small per-condition label offsets to avoid overlapping text where
+    # points sit close together (no_concept_loss and ewc_plus_replay in
+    # particular land almost on top of each other -- that closeness is
+    # itself part of the finding, but the labels still need to stay legible).
+    label_offsets = {
+        "full_method": (8, 8),
+        "fixed_weight": (8, 8),
+        "no_concept_loss": (10, -14),
+        "ewc_plus_replay": (10, 10),
+        "ewc_baseline": (8, 8),
+    }
+
     for row in rows:
         cond = row["condition"]
         acc_mean, acc_std = float(row["acc_mean"]), float(row["acc_std"])
@@ -49,14 +61,15 @@ def main():
             acc_mean, ksi_mean, xerr=acc_std, yerr=ksi_std,
             fmt="o", markersize=10, capsize=4, color=color, label=cond,
         )
-        # Small text label offset next to each point for readability
+        offset = label_offsets.get(cond, (8, 8))
         plt.annotate(cond, (acc_mean, ksi_mean),
-                     textcoords="offset points", xytext=(8, 8), fontsize=9, color=color)
+                     textcoords="offset points", xytext=offset, fontsize=9, color=color)
 
     plt.xlabel("Final accuracy")
     plt.ylabel("Final Knowledge Stability Index (KSI)")
     plt.title("Accuracy vs. KSI across conditions\n(mean ± std over 3 seeds)")
     plt.grid(alpha=0.2)
+    plt.xlim(0.1, 1.05)  # headroom so right-side labels aren't clipped at the plot edge
     plt.tight_layout()
     plt.savefig(OUT_PATH, dpi=150)
     print(f"Saved {OUT_PATH}")
