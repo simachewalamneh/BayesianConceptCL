@@ -18,9 +18,7 @@ adaptively by the concept layer's own posterior variance
 prototype and its re-embedding at a later task boundary.` KSI -> 1 means
 concepts are preserved; KSI -> -1 means the concept vector has rotated
 away from its original direction, regardless of what accuracy alone
-reports. See `concept_cl/model.py::ConceptPrototypeStore` for the exact
-implementation, and the paper draft (`bayesian_concept_consolidation.tex`)
-for a full methodological writeup.
+reports. See `concept_cl/model.py::ConceptPrototypeStore`  
 
 ## Key result (Split-MNIST, 5 tasks, 3 seeds, 1 epoch/task)
 
@@ -68,13 +66,9 @@ Ablation flags (for a single `train.py` run): `--no_concept`, `--no_adaptive`,
 ## Status
 Core pipeline (Phases 1-5) implemented, debugged, and validated end-to-end
 on Split-MNIST with a 3-seed ablation against an EWC literature baseline
-(with and without replay). Numbers in the table above are real, not
-placeholders. See the "Limitations" section of the paper draft for what's
-explicitly *not* yet covered: Split-CIFAR10, standard CL metrics
-(BWT/FWT/forgetting), calibration metrics (ECE/NLL), >3 seeds, and a
+(with and without replay). what's explicitly *not* yet covered: Split-CIFAR10, standard CL metrics(BWT/FWT/forgetting), calibration metrics (ECE/NLL), >3 seeds, and a
 genuinely per-concept-dimension realization of adaptive weighting (current
-implementation averages it to a global scalar — documented honestly rather
-than overstated).
+implementation averages it to a global scalar.
 
 ## Next steps (see paper draft, Section VI/VII for full list)
 - [ ] Split-CIFAR10 as a harder benchmark
