@@ -1,15 +1,3 @@
-"""
-Diagnostic: prints per-batch task loss vs EWC penalty magnitude for
-Task 0 (no penalty yet, establishes the Fisher/star baseline) and Task 1
-(penalty active) -- so we can see the actual scale relationship instead
-of guessing lambda_ewc blind a third time.
-
-Usage:
-    python scripts/diagnose_ewc.py --lambda_ewc 10000
-    python scripts/diagnose_ewc.py --lambda_ewc 1
-    python scripts/diagnose_ewc.py --lambda_ewc 100
-"""
-
 import argparse
 import os
 import sys

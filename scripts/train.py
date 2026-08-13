@@ -1,14 +1,3 @@
-"""
-Train Bayesian Concept Consolidation on Split-MNIST.
-
-Produces the core comparison figure: parameter drift vs. Knowledge
-Stability Index (KSI) across tasks -- the "money plot" for the paper.
-
-Usage:
-    python scripts/train.py --epochs 3 --device cpu
-    python scripts/train.py --epochs 1 --device cpu --no_concept
-    python scripts/train.py --epochs 1 --device cpu --seed 42
-"""
 
 import argparse
 import os
@@ -62,19 +51,7 @@ def run_experiment(epochs=1, batch_size=128, device="cpu",
                     method="concept", ewc_lambda=100.0,
                     seed=0, train_loaders=None, test_loaders=None,
                     save_plot_path=None, verbose=True):
-    """
-    Runs one full Split-MNIST continual-learning pass under the given
-    settings and returns a dict of results.
 
-    method: "concept" (this paper's approach: concept-stability loss,
-            optionally adaptive/replay -- controlled by use_* flags) or
-            "ewc" (classic Elastic Weight Consolidation baseline; use_concept
-            is ignored in this mode, EWC penalty replaces it).
-
-    Pass in pre-built train_loaders/test_loaders (from get_split_mnist_tasks)
-    to avoid reloading MNIST from disk on every call when running many
-    conditions.
-    """
     set_seed(seed)
     device = torch.device(device)
 
@@ -105,11 +82,7 @@ def run_experiment(epochs=1, batch_size=128, device="cpu",
                     task_ce = torch.nn.functional.cross_entropy(logits, y)
                     ewc_pen = ewc_helper.penalty()
 
-                    # EWC+replay variant: also train on rehearsed old-task
-                    # samples, same as the concept-stability method gets.
-                    # This isolates whether the concept method's advantage
-                    # comes from concept-stability specifically, or just
-                    # from having replay at all (which pure EWC lacked).
+                   
                     replay_ce = torch.tensor(0.0, device=device)
                     if replay_batch is not None:
                         rx, ry = replay_batch
@@ -127,9 +100,7 @@ def run_experiment(epochs=1, batch_size=128, device="cpu",
                         replay_batch=replay_batch, use_adaptive=use_adaptive, use_concept=use_concept,
                     )
                 loss.backward()
-                # Safety net: EWC's penalty can still spike after a task
-                # boundary; clip to prevent gradient-explosion-driven
-                # accuracy collapse like the first EWC run showed.
+              
                 torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=5.0)
                 optimizer.step()
             if verbose:
@@ -159,12 +130,7 @@ def run_experiment(epochs=1, batch_size=128, device="cpu",
         if method == "ewc":
             ewc_helper.register_task(train_loader, device)
 
-        # ALWAYS store samples for later KSI re-evaluation, regardless of
-        # whether this method uses replay in its training loss -- KSI
-        # tracking needs old-class samples to re-embed at later task
-        # boundaries even for methods (like plain EWC) that don't replay.
-        # Using replay in the loss (use_replay) is a separate concern from
-        # storing samples for measurement purposes (always on).
+     
         for x, y in train_loader:
             x, y = x.to(device), y.to(device)
             replay_buf.add_task_data(model, x, y)
@@ -174,12 +140,17 @@ def run_experiment(epochs=1, batch_size=128, device="cpu",
         avg_acc = sum(accs) / len(accs)
         drift = parameter_distance(model, initial_state)
         ksi = proto_store.knowledge_stability_index()
+        ksi_stats = proto_store.knowledge_stability_stats()
 
         avg_acc_history.append(avg_acc)
         param_drift_history.append(drift)
         ksi_history.append(ksi)
         if verbose:
             print(f"  avg_acc_so_far={avg_acc:.4f}  param_drift={drift:.3f}  KSI={ksi}")
+            if ksi_stats:
+                print(f"    KSI stats: mean={ksi_stats['mean']:.4f}  median={ksi_stats['median']:.4f}  "
+                      f"min={ksi_stats['min']:.4f} (class {ksi_stats['min_class_id']})  "
+                      f"std={ksi_stats['std']:.4f}  n_classes={ksi_stats['n_classes']}")
 
     if save_plot_path:
         os.makedirs(os.path.dirname(save_plot_path), exist_ok=True)
@@ -204,6 +175,7 @@ def run_experiment(epochs=1, batch_size=128, device="cpu",
         "final_acc": avg_acc_history[-1],
         "final_ksi": ksi_history[-1],
         "final_drift": param_drift_history[-1],
+        "final_ksi_stats": proto_store.knowledge_stability_stats(),
     }
 
 

@@ -1,14 +1,3 @@
-"""
-Accuracy vs. KSI scatter plot -- the central conceptual result figure
-(paper Section V-C / Fig. "acc_vs_ksi"). One point per condition, with
-error bars from the mean +/- std already computed by run_ablations.py.
-
-Reads results/ablation_summary.csv (produced by run_ablations.py) so it
-does not require re-running any training.
-
-Usage:
-    python scripts/plot_acc_vs_ksi.py
-"""
 
 import ast
 import csv
@@ -39,10 +28,7 @@ def main():
         rows = list(reader)
 
     plt.figure(figsize=(7, 6))
-    # Small per-condition label offsets to avoid overlapping text where
-    # points sit close together (no_concept_loss and ewc_plus_replay in
-    # particular land almost on top of each other -- that closeness is
-    # itself part of the finding, but the labels still need to stay legible).
+    
     label_offsets = {
         "full_method": (8, 8),
         "fixed_weight": (8, 8),

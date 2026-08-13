@@ -1,9 +1,3 @@
-"""
-Replay buffer that stores samples flagged by predictive uncertainty rather
-than random/reservoir sampling -- keeps the examples the model is least
-confident about, per class.
-"""
-
 import torch
 
 

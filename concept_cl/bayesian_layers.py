@@ -1,13 +1,3 @@
-"""
-Bayesian variational linear layer (Bayes-by-Backprop style).
-
-Weights are distributions, not point estimates:
-    w ~ N(mu, softplus(rho)^2)
-
-This is the stochastic backbone that produces the epistemic uncertainty
-signal used throughout the framework (KL loss, adaptive plasticity,
-uncertainty-weighted replay).
-"""
 
 import math
 import torch

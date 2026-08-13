@@ -1,13 +1,3 @@
-"""
-Run the full ablation comparison across multiple seeds and aggregate
-mean +/- std for final accuracy and final KSI per condition. Also collects
-the FULL per-task KSI trajectory (not just the final value) across seeds
-and plots mean +/- std bands per condition -- shows how concept drift
-actually evolves task-by-task, not just where it ends up.
-
-Usage:
-    python scripts/run_ablations.py --seeds 0 1 2 --epochs 1 --device cpu
-"""
 
 import argparse
 import csv

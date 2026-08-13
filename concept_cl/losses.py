@@ -1,12 +1,3 @@
-"""
-Loss terms for Bayesian Concept Consolidation.
-
-    L = L_task + lambda1 * L_KL + lambda2 * L_concept + lambda3 * L_replay
-
-L_concept and the adaptive lambda2_i (per-concept-dim) are the core
-novel pieces; L_task and L_KL are standard.
-"""
-
 import torch
 import torch.nn.functional as F
 
@@ -17,11 +8,7 @@ def task_loss(logits: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
 
 def concept_stability_loss(current_concepts: torch.Tensor, targets: torch.Tensor,
                             prototype_store, mode: str = "cosine") -> torch.Tensor:
-    """
-    Penalizes drift between each sample's current concept vector and its
-    class's frozen prototype (skips classes with no prototype yet, i.e.
-    brand-new classes being learned for the first time).
-    """
+  
     losses = []
     for i in range(current_concepts.shape[0]):
         class_id = int(targets[i].item())
@@ -40,26 +27,13 @@ def concept_stability_loss(current_concepts: torch.Tensor, targets: torch.Tensor
 
 def adaptive_concept_weight(posterior_variance: torch.Tensor, eps: float = 1e-3,
                              max_weight: float = 10.0) -> torch.Tensor:
-    """
-    lambda_i = 1 / (sigma_i^2 + eps), clamped to [0, max_weight].
-    High certainty (low variance) -> large penalty -> protect concept.
-    High uncertainty (high variance) -> small penalty -> allow adaptation.
-    Without clamping, this exploded to ~1000x early in training (posterior
-    variance starts near-zero from the rho init), swamping the task loss
-    entirely and causing task accuracy to collapse across tasks instead of
-    the model actually learning new classes.
-    """
+   
     raw = 1.0 / (posterior_variance + eps)
     return torch.clamp(raw, max=max_weight)
 
 
 def uncertainty_weighted_replay_loss(model, replay_x: torch.Tensor, replay_y: torch.Tensor,
                                       n_mc_samples: int = 5) -> torch.Tensor:
-    """
-    Weight each replay sample's loss by its current predictive uncertainty
-    (epistemic entropy from MC sampling) -- prioritizes samples the model
-    is at risk of forgetting over ones it still handles confidently.
-    """
     with torch.no_grad():
         uncertainty = model.predictive_uncertainty(replay_x, n_samples=n_mc_samples)
         weights = uncertainty / (uncertainty.sum() + 1e-8) * replay_x.shape[0]
@@ -79,12 +53,6 @@ def total_loss(model, x, y, prototype_store,
     l_kl = model.kl_divergence() * lambda1_kl
 
     if use_concept:
-        # Concept-stability loss on the CURRENT batch will almost always be 0 in
-        # class-incremental settings like Split-MNIST, since a task's own batch
-        # only contains classes with no prototype yet. The real protective
-        # signal has to come from the REPLAY batch, since that's the only place
-        # old-task data (with existing prototypes) flows through the model
-        # during later tasks -- so we compute it on both and sum them.
         l_concept_current = concept_stability_loss(concepts, y, prototype_store)
 
         l_concept_replay = torch.tensor(0.0, device=x.device)
