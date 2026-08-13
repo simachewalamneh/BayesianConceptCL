@@ -70,7 +70,7 @@ on Split-MNIST with a 3-seed ablation against an EWC literature baseline
 genuinely per-concept-dimension realization of adaptive weighting (current
 implementation averages it to a global scalar.
 
-## Next steps (see paper draft, Section VI/VII for full list)
+## Next steps  
 - [ ] Split-CIFAR10 as a harder benchmark
 - [ ] Standard CL metrics (BWT, FWT, forgetting) + calibration (ECE, NLL)
 - [ ] 5 seeds instead of 3 for tighter confidence intervals
